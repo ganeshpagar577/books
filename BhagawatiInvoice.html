@@ -1,0 +1,469 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Editable Invoice - Bhagawati Agritech</title>
+<style>
+  @page { size: A4; margin: 10mm; }
+
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    background: #fff;
+    margin: 0;
+    padding: 0;
+  }
+
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    margin: auto;
+    border: 2px solid #000;
+    border-radius: 8px;
+    padding: 12mm;
+    box-sizing: border-box;
+    position: relative;
+  }
+
+  .edit-btn, .pdf-btn {
+    position: absolute;
+    top: 12px;
+    background: #007bff;
+    color: #fff;
+    border: none;
+    padding: 6px 10px;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+
+  .edit-btn { right: 117px; }
+  .pdf-btn { right: 12px; background: #28a745; }
+
+  .header {
+    text-align: center;
+    margin-bottom: 10px;
+  }
+
+  .header h1 {
+    font-size: 30px;
+    margin: 5px 0;
+    font-weight: bold;
+  }
+
+  .header .address, .header .gst {
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .bold { font-weight: bold; }
+
+  .section-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .section {
+    width: 49%;
+  }
+
+  .section-title {
+    background: #000;
+    color: #fff;
+    padding: 5px 8px;
+    font-weight: bold;
+  }
+
+  .section-body {
+    border: 1px solid #000;
+    padding: 8px;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  table.invoice {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 12px;
+  }
+
+  table.invoice th,
+  table.invoice td {
+    border: 1px solid #000;
+    padding: 6px 5px;
+    vertical-align: top;
+  }
+
+  table.invoice th {
+    background: #000;
+    color: #fff;
+    text-align: center;
+  }
+
+  table.invoice td.num { text-align: right; }
+  table.invoice td.center { text-align: center; }
+
+  /* ✅ Add line spacing for multiline item name */
+  #itemName {
+    line-height: 1.6;
+    white-space: pre-line;
+  }
+
+  .totals {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 12px;
+    font-size: 13px;
+  }
+
+  .totals .box {
+    border: 1px solid #000;
+    padding: 8px;
+    width: 48%;
+  }
+
+  .totals td { padding: 4px 6px; }
+
+  .amount-in-words {
+    border: 1px solid #000;
+    padding: 8px;
+    margin-top: 10px;
+    font-size: 13px;
+    background: #f9f9f9;
+  }
+
+  .bottom-row {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 12px;
+  }
+
+  .terms, .signature {
+    border: 1px solid #000;
+    padding: 10px;
+    width: 48%;
+    font-size: 12px;
+  }
+
+  .signature {
+    text-align: center;
+  }
+
+  .signature .company {
+    font-weight: bold;
+    margin-bottom: 20px;
+  }
+
+  /* Modal Popup */
+  .modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5);
+    justify-content: center;
+    align-items: center;
+  }
+
+  .modal-content {
+    background: #fff;
+    padding: 20px;
+    border-radius: 6px;
+    width: 340px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.4);
+  }
+
+  .modal-content h3 { margin-top: 0; }
+
+  .modal-content label {
+    display: block;
+    margin-top: 10px;
+    font-size: 14px;
+    font-weight: bold;
+  }
+
+  .modal-content input, .modal-content textarea {
+    width: 100%;
+    padding: 5px;
+    margin-top: 4px;
+    font-size: 14px;
+    box-sizing: border-box;
+  }
+
+  textarea { resize: vertical; min-height: 60px; }
+
+  .modal-buttons {
+    text-align: right;
+    margin-top: 15px;
+  }
+
+  .modal-buttons button {
+    margin-left: 10px;
+    padding: 5px 10px;
+    border: none;
+    background: #007bff;
+    color: white;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+
+  .cancel-btn {
+    background: #999;
+  }
+
+  /* ✅ Hide buttons and modal when printing or saving PDF */
+  @media print {
+    .edit-btn, .pdf-btn, .modal { display: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="page" id="invoice">
+  <button class="edit-btn" onclick="openEditor()">Edit Invoice</button>
+  <button class="pdf-btn" onclick="savePDF()">Save as PDF</button>
+
+  <div class="header">
+    <div>Tax Invoice</div>
+    <h1>Bhagawati Agritech</h1>
+    <div class="address">
+      AT. POST. KHADAK OZER,<br>
+      <b>VADALIBHOI</b>, HOUSE NO. 292/2,<br>
+      KHADAKJAMB ROAD, CHANDVAD<br>
+      <b>Phone No. 7020828917</b>
+    </div>
+    <div class="gst">
+      GSTIN: 27CXXPP2607J1ZS, State: 27-Maharashtra
+    </div>
+  </div>
+
+  <div class="section-row">
+    <div class="section">
+      <div class="section-title">Bill To</div>
+      <div class="section-body">
+        <b id="billName">Muktabai Bhausaheb Gatkal</b><br>
+        Contact No.: <span id="billPhone">9657136489</span>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title" style="text-align:right;">Invoice Details</div>
+      <div class="section-body" style="text-align:right;">
+        Invoice No.: <span id="invoiceNo">22</span><br>
+        Date: <span id="invoiceDate">15-10-2025</span>
+      </div>
+    </div>
+  </div>
+
+  <table class="invoice">
+    <thead>
+      <tr>
+        <th>Sr.No.</th>
+        <th>Item Name</th>
+        <th>HSN/SAC</th>
+        <th>Quantity</th>
+        <th>Price/Unit</th>
+        <th>Taxable Amount</th>
+        <th>CGST</th>
+        <th>SGST</th>
+        <th>Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="
+    height: 250px;">
+        <td class="center">1</td>
+         
+<td id="itemName" data-raw="Soiltech agritech solution
+36 blade 5 foot rotawaiter
+Model: SAR-5
+Serial No.: 0106">Soiltech agritech solution<br><br>36 blade 5 foot rotawaiter<br><br>Model: SAR-5<br><br>Serial No.: 0106</td>
+        <td></td>
+        <td class="center">1</td>
+        <td class="num" id="priceUnit">₹ 85,720.00</td>
+        <td class="num" id="taxableAmt">₹ 85,720.00</td>
+        <td class="num" id="cgst">₹ 2,140.00<br>(2.5%)</td>
+        <td class="num" id="sgst">₹ 2,140.00<br>(2.5%)</td>
+        <td class="num" id="totalAmt">₹ 90,000.00</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="totals">
+    <div class="box">
+      <b>Tax details</b><br>
+      <table>
+        <tr><td>Tax Rate</td><td style="text-align:right;">5.0%</td></tr>
+        <tr><td>CGST</td><td id="cgstBox" style="text-align:right;">₹ 2,140.00</td></tr>
+        <tr><td>SGST</td><td id="sgstBox" style="text-align:right;">₹ 2,140.00</td></tr>
+      </table>
+    </div>
+
+    <div class="box">
+      <table>
+        <tr><td><b>Total</b></td><td id="totalBox" style="text-align:right;"><b>₹ 90,000.00</b></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="amount-in-words" id="amountWords">
+    <b>Invoice Amount In Words:</b> Ninety Thousand Rupees only
+  </div>
+
+  <div class="bottom-row">
+    <div class="terms">
+      <b>Terms and Conditions</b><br><br>
+      Thank you doing business with us.
+    </div>
+    <div class="signature">
+      <div class="company">For: Bhagawati Agritech</div>
+      <div style="height:40px;"></div>
+      <div class="bold">Authorized Signatory</div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal" id="editModal">
+  <div class="modal-content">
+    <h3>Edit Invoice Details</h3>
+    <label>Bill To Name:</label>
+    <input type="text" id="inputName" />
+    <label>Mobile No:</label>
+    <input type="text" id="inputPhone" />
+    <label>Invoice No:</label>
+    <input type="text" id="inputInvoiceNo" />
+    <label>Date:</label>
+    <input type="date" id="inputDate" />
+    <label>Item Description:</label>
+    <textarea id="inputItem"></textarea>
+    <label>Amount (Taxable):</label>
+    <input type="number" id="inputAmount" step="0.01" />
+    <div class="modal-buttons">
+      <button class="cancel-btn" onclick="closeEditor()">Cancel</button>
+      <button onclick="saveChanges()">Save</button>
+    </div>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+<script>
+function openEditor() {
+  const itemCell = document.getElementById('itemName');
+  // ✅ Always read the original clean text from data attribute
+  const itemRaw = itemCell.getAttribute('data-raw') || itemCell.innerText.replace(/\n\n/g, '\n');
+
+  document.getElementById('inputName').value = document.getElementById('billName').innerText;
+  document.getElementById('inputPhone').value = document.getElementById('billPhone').innerText;
+  document.getElementById('inputInvoiceNo').value = document.getElementById('invoiceNo').innerText;
+
+  const dateText = document.getElementById('invoiceDate').innerText.trim();
+  const [d,m,y] = dateText.split('-');
+  document.getElementById('inputDate').value = `${y}-${m}-${d}`;
+
+  document.getElementById('inputItem').value = itemRaw;
+  let amt = document.getElementById('taxableAmt').innerText.replace(/[₹,]/g,'').trim();
+  document.getElementById('inputAmount').value = parseFloat(amt);
+
+  document.getElementById('editModal').style.display = 'flex';
+}
+
+function closeEditor() {
+  document.getElementById('editModal').style.display = 'none';
+}
+
+function saveChanges() {
+  const name = document.getElementById('inputName').value;
+  const phone = document.getElementById('inputPhone').value;
+  const invoiceNo = document.getElementById('inputInvoiceNo').value;
+  const dateVal = document.getElementById('inputDate').value;
+  const [y,m,d] = dateVal.split('-');
+  const dateStr = `${d}-${m}-${y}`;
+  const itemRaw = document.getElementById('inputItem').value.trim();
+  const amount = parseFloat(document.getElementById('inputAmount').value);
+
+  // ✅ Create formatted version for display (double spacing)
+  const itemDisplay = itemRaw.replace(/\n/g, '\n\n');
+
+  const cgst = amount * 0.025;
+  const sgst = amount * 0.025;
+  const total = amount + cgst + sgst;
+
+  document.getElementById('billName').innerText = name;
+  document.getElementById('billPhone').innerText = phone;
+  document.getElementById('invoiceNo').innerText = invoiceNo;
+  document.getElementById('invoiceDate').innerText = dateStr;
+
+  const itemCell = document.getElementById('itemName');
+  itemCell.innerText = itemDisplay;
+  itemCell.setAttribute('data-raw', itemRaw); // ✅ store clean text
+
+  document.getElementById('priceUnit').innerText = `₹ ${amount.toLocaleString("en-IN",{minimumFractionDigits:2})}`;
+  document.getElementById('taxableAmt').innerText = `₹ ${amount.toLocaleString("en-IN",{minimumFractionDigits:2})}`;
+  document.getElementById('cgst').innerHTML = `₹ ${cgst.toLocaleString("en-IN",{minimumFractionDigits:2})}<br>(2.5%)`;
+  document.getElementById('sgst').innerHTML = `₹ ${sgst.toLocaleString("en-IN",{minimumFractionDigits:2})}<br>(2.5%)`;
+  document.getElementById('totalAmt').innerText = `₹ ${total.toLocaleString("en-IN",{minimumFractionDigits:2})}`;
+
+  document.getElementById('cgstBox').innerText = `₹ ${cgst.toLocaleString("en-IN",{minimumFractionDigits:2})}`;
+  document.getElementById('sgstBox').innerText = `₹ ${sgst.toLocaleString("en-IN",{minimumFractionDigits:2})}`;
+  document.getElementById('totalBox').innerHTML = `<b>₹ ${total.toLocaleString("en-IN",{minimumFractionDigits:2})}</b>`;
+
+  const words = numberToWords(Math.round(total)) + " Rupees only";
+  document.getElementById('amountWords').innerHTML = `<b>Invoice Amount In Words:</b> ${words}`;
+
+  closeEditor();
+}
+
+// ✅ Hide buttons during PDF generation
+function savePDF() {
+  const editBtn = document.querySelector('.edit-btn');
+  const pdfBtn = document.querySelector('.pdf-btn');
+
+  editBtn.style.display = 'none';
+  pdfBtn.style.display = 'none';
+
+  const element = document.getElementById('invoice');
+  const opt = {
+    margin: 0,
+    filename: 'Invoice_' + document.getElementById('invoiceNo').innerText + '.pdf',
+    image: { type: 'jpeg', quality: 1 },
+    html2canvas: { scale: 2 },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+  }; 
+  html2pdf()
+    .set(opt)
+    .from(element)
+    .toPdf()
+    .get('pdf')
+    .then(pdf => {
+      const totalPages = pdf.internal.getNumberOfPages();
+      if (totalPages > 1) pdf.deletePage(2); // ✅ remove accidental blank page
+    })
+    .save()
+    .then(() => {
+      editBtn.style.display = 'block';
+      pdfBtn.style.display = 'block';
+    });
+}
+
+function numberToWords(num) {
+  const a = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten",
+             "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen",
+             "Eighteen", "Nineteen"];
+  const b = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+  if ((num = num.toString()).length > 9) return "Overflow";
+  let n = ('000000000' + num).substr(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
+  if (!n) return; 
+  let str = '';
+  str += (n[1] != 0) ? (a[Number(n[1])] || b[n[1][0]] + ' ' + a[n[1][1]]) + ' Crore ' : '';
+  str += (n[2] != 0) ? (a[Number(n[2])] || b[n[2][0]] + ' ' + a[n[2][1]]) + ' Lakh ' : '';
+  str += (n[3] != 0) ? (a[Number(n[3])] || b[n[3][0]] + ' ' + a[n[3][1]]) + ' Thousand ' : '';
+  str += (n[4] != 0) ? (a[Number(n[4])] || b[n[4][0]] + ' ' + a[n[4][1]]) + ' Hundred ' : '';
+  str += (n[5] != 0) ? ((str != '') ? 'and ' : '') + (a[Number(n[5])] || b[n[5][0]] + ' ' + a[n[5][1]]) : '';
+  return str.trim();
+}
+</script>
+
+</body>
+</html>
